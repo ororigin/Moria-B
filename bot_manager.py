@@ -6,7 +6,6 @@ import signal
 import os
 import logging
 from datetime import datetime
-from bot import Bot
 from system_monitor import SystemMonitor
 import psutil
 
@@ -14,35 +13,31 @@ class BotManager:
     def __init__(self, config_path="config.json"):
         self.bots = {}
         self.config = self.load_config(config_path)
-        self.output_queue = multiprocessing.Queue()
         
         # 创建日志目录
         self.logs_dir = "logs"
         os.makedirs(self.logs_dir, exist_ok=True)
         
-        # 日志收集器进程
-        self.log_collector = multiprocessing.Process(target=self.collect_logs)
-        self.log_collector.daemon = True
-        
         # 系统监控
         self.system_monitor = SystemMonitor()
-        self.resource_queue = multiprocessing.Queue()
-        # 资源收集器进程
-        self.resource_collector = multiprocessing.Process(target=self.collect_resources)
-        self.resource_collector.daemon = True
-        # 使用 Manager 创建共享字典
-        manager = multiprocessing.Manager()
-        self.bot_resources = manager.dict()
+        
+        # 延迟初始化多进程对象
+        self.output_queue = None
+        self.resource_queue = None
+        self.log_collector = None
+        self.resource_collector = None
+        self.bot_resources = None
 
     def load_config(self, path):
         with open(path, 'r') as f:
             return json.load(f)
 
-    def collect_logs(self):
+    @staticmethod
+    def collect_logs(logs_dir, output_queue):
         """日志收集器进程，将日志写入文件"""
         while True:
-            if not self.output_queue.empty():
-                log = self.output_queue.get()
+            if not output_queue.empty():
+                log = output_queue.get()
                 if log == "SHUTDOWN":
                     break
                 
@@ -51,7 +46,7 @@ class BotManager:
                 message = log['message']
                 
                 # 创建假人日志目录
-                bot_log_dir = os.path.join(self.logs_dir, bot_name)
+                bot_log_dir = os.path.join(logs_dir, bot_name)
                 os.makedirs(bot_log_dir, exist_ok=True)
                 
                 # 写入日志文件
@@ -68,7 +63,7 @@ class BotManager:
         command_queue = multiprocessing.Queue()
         process = multiprocessing.Process(
             target=self.run_bot,
-            args=(name, server, port, password, command_queue, self.output_queue)
+            args=(name, server, port, password, command_queue, self.output_queue, self.resource_queue)
         )
         process.daemon = True
         process.start()
@@ -80,57 +75,6 @@ class BotManager:
             'port': port
         }
         return True
-
-def run_bot(self, name, server, port, password, command_queue, output_queue):
-    bot = Bot(name, server, port, password, command_queue, output_queue)
-    bot.create_bot()
-    
-    # 获取当前进程ID
-    pid = os.getpid()
-    
-    while bot.is_running:
-        try:
-            # 获取进程资源使用情况
-            process = psutil.Process(pid)
-            cpu_percent = process.cpu_percent(interval=0.0)
-            memory_info = process.memory_info()
-            memory_mb = memory_info.rss / (1024 * 1024)  # 转换为MB
-            
-            # 发送资源数据到队列
-            self.resource_queue.put({
-                'bot_name': name,
-                'pid': pid,
-                'cpu': cpu_percent,
-                'memory': round(memory_mb, 1),
-                'last_update': time.time()
-            })
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            pass
-        
-        time.sleep(1)
-        
-        # 移除资源记录
-        if name in self.bot_resources:
-            del self.bot_resources[name]
-
-    def _update_bot_resources(self, name, pid):
-        try:
-            # 获取进程资源使用情况
-            process = psutil.Process(pid)
-            cpu_percent = process.cpu_percent(interval=0.0)
-            memory_info = process.memory_info()
-            memory_mb = memory_info.rss / (1024 * 1024)  # 转换为MB
-            
-            # 更新资源记录
-            self.bot_resources[name] = {
-                'pid': pid,
-                'cpu': cpu_percent,
-                'memory': round(memory_mb, 1),
-                'last_update': time.time()
-            }
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            # 进程已结束或无权限访问
-            pass
 
     def stop_bot(self, name):
         if name in self.bots:
@@ -171,32 +115,55 @@ def run_bot(self, name, server, port, password, command_queue, output_queue):
     
     def get_bot_resources(self, name):
         """获取指定假人的资源使用情况"""
-        if name in self.bot_resources:
+        if self.bot_resources and name in self.bot_resources:
             return self.bot_resources[name].copy()
         return None
     
     def get_all_resources(self):
         """获取所有假人的资源使用情况"""
-        return {name: data.copy() for name, data in self.bot_resources.items()}
+        if self.bot_resources:
+            return {name: data.copy() for name, data in self.bot_resources.items()}
+        return {}
 
-    def collect_resources(self):
+    @staticmethod
+    def collect_resources(bot_resources, resource_queue):
         """资源收集器进程，更新资源使用情况"""
         while True:
-            if not self.resource_queue.empty():
-                resource_data = self.resource_queue.get()
+            if not resource_queue.empty():
+                resource_data = resource_queue.get()
                 if resource_data == "SHUTDOWN":
                     break
                     
                 bot_name = resource_data['bot_name']
-                self.bot_resources[bot_name] = resource_data
+                bot_resources[bot_name] = resource_data
     
     def start(self):
+        # 初始化多进程对象
+        self.output_queue = multiprocessing.Queue()
+        self.resource_queue = multiprocessing.Queue()
+        
+        # 使用 Manager 创建共享字典
+        manager = multiprocessing.Manager()
+        self.bot_resources = manager.dict()
+        
+        # 创建收集器进程
+        self.log_collector = multiprocessing.Process(
+            target=self.collect_logs, 
+            args=(self.logs_dir, self.output_queue),
+            daemon=True
+        )
+        self.resource_collector = multiprocessing.Process(
+            target=self.collect_resources, 
+            args=(self.bot_resources, self.resource_queue),
+            daemon=True
+        )
+        
+        # 启动收集器
+        self.log_collector.start()
         self.resource_collector.start()
+        
         # 启动系统监控
         self.system_monitor.start()
-        
-        # 启动日志收集器
-        self.log_collector.start()
         
         # 从配置启动初始机器人
         for bot_config in self.config.get('bots', []):
@@ -207,31 +174,73 @@ def run_bot(self, name, server, port, password, command_queue, output_queue):
                 bot_config.get('password', '')
             )
         
-        # 注册退出处理
-        signal.signal(signal.SIGINT, self.shutdown)
-        signal.signal(signal.SIGTERM, self.shutdown)
+
         
         # 保持主进程运行
         while True:
             time.sleep(1)
 
     def shutdown(self, signum, frame):
-        # 停止系统监控
+        """外部调用的关闭方法"""
+        # 原有shutdown方法的内容
         self.system_monitor.stop()
-        
-        # 停止所有机器人
         for name in list(self.bots.keys()):
             self.stop_bot(name)
-        
-        # 停止日志收集器
-        self.output_queue.put("SHUTDOWN")
-        self.log_collector.join()
-        
-        # 停止资源收集器
-        self.resource_queue.put("SHUTDOWN")
-        self.resource_collector.join()
+        if self.output_queue:
+            self.output_queue.put("SHUTDOWN")
+            self.log_collector.join(timeout=2.0)
+        if self.resource_queue:
+            self.resource_queue.put("SHUTDOWN")
+            self.resource_collector.join(timeout=2.0)
             
         exit(0)
+        
+    def start_bot(self, name, server, port, password):
+        if name in self.bots:
+            return False
+
+        command_queue = multiprocessing.Queue()
+        process = multiprocessing.Process(
+            target=BotManager.run_bot,  # 改为调用静态方法
+            args=(name, server, port, password, command_queue, self.output_queue, self.resource_queue)
+        )
+        process.daemon = True
+        process.start()
+        
+        self.bots[name] = {
+            'process': process,
+            'command_queue': command_queue,
+            'server': server,
+            'port': port
+        }
+        return True
+
+    @staticmethod
+    def run_bot(name, server, port, password, command_queue, output_queue, resource_queue):
+        # 延迟导入避免父进程问题
+        from bot import Bot
+        
+        bot = Bot(name, server, port, password, command_queue, output_queue)
+        bot.create_bot()
+        
+        pid = os.getpid()
+        while bot.is_running:
+            try:
+                process = psutil.Process(pid)
+                cpu_percent = process.cpu_percent(interval=0.0)
+                memory_info = process.memory_info()
+                memory_mb = memory_info.rss / (1024 * 1024)
+                
+                resource_queue.put({
+                    'bot_name': name,
+                    'pid': pid,
+                    'cpu': cpu_percent,
+                    'memory': round(memory_mb, 1),
+                    'last_update': time.time()
+                })
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+            time.sleep(1)
 
 if __name__ == "__main__":
     manager = BotManager()

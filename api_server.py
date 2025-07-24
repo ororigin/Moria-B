@@ -1,10 +1,43 @@
 # api_server.py
+import multiprocessing
 from flask import Flask, request, jsonify
-from bot_manager import BotManager
 import threading
 import time
+import signal
+from werkzeug.serving import make_server
+from flask_cors import CORS
+
+# 设置多进程启动方法（仅当尚未设置时）
+try:
+    multiprocessing.set_start_method('spawn')
+except RuntimeError:
+    # 如果已经设置过启动方法，则忽略
+    pass
+
+class FlaskServerWrapper:
+    def __init__(self, app, port):
+        self.app = app
+        self.port = port
+        self.server = make_server('0.0.0.0', port, app)
+        self.thread = None
+
+    def start(self):
+        self.thread = threading.Thread(target=self.server.serve_forever)
+        self.thread.daemon = True
+        self.thread.start()
+        print(f"Flask服务器已在端口 {self.port} 启动")
+
+    def stop(self):
+        if self.server:
+            self.server.shutdown()
+            self.thread.join()
+            print("Flask服务器已停止")
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+# 现在导入 BotManager
+from bot_manager import BotManager
 manager = BotManager()
 
 @app.route('/bot', methods=['POST'])
@@ -45,24 +78,20 @@ def send_command(name):
 
 @app.route('/bot/<name>/chat', methods=['GET'])
 def get_chat(name):
-    """获取假人聊天日志的最后100行"""
     lines = request.args.get('lines', default=100, type=int)
     return jsonify({'messages': manager.get_logs(name, 'chat', lines)})
 
 @app.route('/bot/<name>/log', methods=['GET'])
 def get_log(name):
-    """获取假人系统日志的最后100行"""
     lines = request.args.get('lines', default=100, type=int)
     return jsonify({'messages': manager.get_logs(name, 'log', lines)})
 
 @app.route('/system/usage', methods=['GET'])
 def get_system_usage():
-    """获取系统整体资源使用情况"""
     return jsonify(manager.get_system_usage())
 
 @app.route('/bot/<name>/resources', methods=['GET'])
 def get_bot_resources(name):
-    """获取指定假人的资源使用情况"""
     resources = manager.get_bot_resources(name)
     if resources:
         return jsonify(resources)
@@ -70,7 +99,6 @@ def get_bot_resources(name):
 
 @app.route('/bot/resources', methods=['GET'])
 def get_all_resources():
-    """获取所有假人的资源使用情况"""
     return jsonify(manager.get_all_resources())
 
 def run_manager():
@@ -82,4 +110,21 @@ if __name__ == '__main__':
     manager_thread.start()
     
     # 启动Flask应用
-    app.run(port=manager.config.get('web_port', 5000), use_reloader=False)
+    port = manager.config.get('web_port', 5000)
+    server = FlaskServerWrapper(app, port)
+    server.start()
+    
+    # 在主线程注册信号处理器
+    def shutdown_handler(signum, frame):
+        print("收到关闭信号，正在优雅关闭...")
+        server.stop()
+        manager.shutdown()
+        print("关闭完成")
+        exit(0)
+        
+    signal.signal(signal.SIGINT, shutdown_handler)
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    
+    # 保持主线程运行
+    while True:
+        time.sleep(1)

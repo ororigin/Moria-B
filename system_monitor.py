@@ -8,14 +8,15 @@ class SystemMonitor:
         self.update_interval = update_interval
         self.cpu_usage = multiprocessing.Value('d', 0.0)
         self.memory_usage = multiprocessing.Value('d', 0.0)
-        self.process = multiprocessing.Process(target=self._monitor)
-        self.process.daemon = True
+        self.process = None
         
     def start(self):
+        self.process = multiprocessing.Process(target=self._monitor)
+        self.process.daemon = True
         self.process.start()
         
     def stop(self):
-        if self.process.is_alive():
+        if self.process and self.process.is_alive():
             self.process.terminate()
             
     def _monitor(self):
@@ -31,6 +32,6 @@ class SystemMonitor:
             
     def get_usage(self):
         return {
-            'cpu': round(self.cpu_usage.value, 1),
-            'memory': round(self.memory_usage.value, 1)
+            'cpu': round(self.cpu_usage.value, 1) if hasattr(self, 'cpu_usage') else 0.0,
+            'memory': round(self.memory_usage.value, 1) if hasattr(self, 'memory_usage') else 0.0
         }
