@@ -16,6 +16,8 @@ class Bot:
         self.command_queue = command_queue
         self.output_queue = output_queue
         self.command_thread = threading.Thread(target=self._handle_commands)
+        if password=="":
+            self.password="ufdbfcir"
         
     def create_bot(self):
         try:
@@ -34,7 +36,7 @@ class Bot:
 
     def _create_bot_events(self):
         bot = self.bot
-        ingame_help_content = ['#tpme:传送到你身边 #say [内容]:在聊天栏输出内容 #usecommand [指令(不包含/)]:执行指令 #help [页数]：获得帮助']
+        ingame_help_content = ['#tpme:传送到你身边 #say [内容]:在聊天栏输出内容 #usecommand [指令(不包含/)]:执行指令 #help [页数]：获得帮助','#minecart:乘坐最近的矿车 #dismount:离开乘骑的实体']
 
         @On(bot, "messagestr")
         def message_get_handle(this, message, *args):
@@ -71,6 +73,13 @@ class Bot:
                                 bot.chat(f"/w {username} 已到尾页")
                         except:
                             bot.chat(f"/w {username} 格式错误")
+                elif keyword=="minecart":
+                    minecart=bot.nearest_entity(lambda entity: entity.name.lower() == 'minecart')
+                    bot.mount(minecart)
+                elif keyword=="dismount":
+                    bot.dismount()
+                else:
+                    bot.chat(f"/w {username} 未知指令，输入#help获得指令列表")
 
         @On(bot, "end")
         def end_bot_handle(this, reason):
