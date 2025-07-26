@@ -6,7 +6,6 @@
     <title>假人控制系统</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* 所有CSS样式保持不变 */
         * {
             margin: 0;
             padding: 0;
@@ -32,11 +31,7 @@
             min-height: 100vh;
             overflow-x: hidden;
             color: #333;
-        }
-
-        .container {
             display: flex;
-            min-height: 100vh;
         }
 
         /* 侧边栏样式 */
@@ -48,6 +43,9 @@
             transition: var(--transition);
             box-shadow: 3px 0 15px rgba(0, 0, 0, 0.1);
             z-index: 100;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
         }
 
         .logo {
@@ -112,6 +110,9 @@
             flex: 1;
             padding: 30px;
             transition: var(--transition);
+            margin-left: 250px;
+            height: 100vh;
+            overflow-y: auto;
         }
 
         .header {
@@ -428,6 +429,16 @@
             background: rgba(58, 12, 163, 0.2);
         }
 
+        /* 重启按钮 */
+        .btn-restart {
+            background: rgba(76, 201, 240, 0.1);
+            color: var(--success);
+        }
+
+        .btn-restart:hover {
+            background: rgba(76, 201, 240, 0.2);
+        }
+
         /* 刷新按钮 */
         .btn-refresh {
             background: rgba(58, 12, 163, 0.1);
@@ -599,13 +610,15 @@
 
         /* 响应式设计 */
         @media (max-width: 992px) {
-            .container {
+            body {
                 flex-direction: column;
             }
             
             .sidebar {
                 width: 100%;
                 padding: 15px;
+                height: auto;
+                position: relative;
             }
             
             .logo {
@@ -630,6 +643,8 @@
             
             .main-content {
                 padding: 20px;
+                margin-left: 0;
+                height: auto;
             }
 
             .bot-actions {
@@ -666,108 +681,106 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- 侧边栏 -->
-        <div class="sidebar">
-            <div class="logo">
-                <i class="fas fa-robot"></i>
-                <h1>假人控制系统</h1>
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-robot"></i>
+            <h1>假人控制系统</h1>
+        </div>
+        <ul class="nav-links">
+            <li>
+                <a href="#" class="active" data-page="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>仪表盘</span>
+                </a>
+            </li>
+            <li>
+                <a href="#" data-page="control">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>控制面板</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main-content">
+        <div class="header">
+            <h2>假人控制系统</h2>
+            <!-- 仅在控制面板显示创建按钮 -->
+            <div class="create-bot-container" style="display: none;">
+                <button class="create-bot-btn" id="createBotBtn">
+                    <i class="fas fa-plus"></i>创建假人
+                </button>
             </div>
-            <ul class="nav-links">
-                <li>
-                    <a href="#" class="active" data-page="dashboard">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span>仪表盘</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" data-page="control">
-                        <i class="fas fa-sliders-h"></i>
-                        <span>控制面板</span>
-                    </a>
-                </li>
-            </ul>
         </div>
 
-        <!-- 主内容区 -->
-        <div class="main-content">
-            <div class="header">
-                <h2>假人控制系统</h2>
-                <!-- 仅在控制面板显示创建按钮 -->
-                <div class="create-bot-container" style="display: none;">
-                    <button class="create-bot-btn" id="createBotBtn">
-                        <i class="fas fa-plus"></i>创建假人
-                    </button>
+        <div class="content">
+            <!-- 仪表盘页面 -->
+            <div class="page active" id="dashboard">
+                <div class="page-title">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <h3>系统监控仪表盘</h3>
                 </div>
-            </div>
-
-            <div class="content">
-                <!-- 仪表盘页面 -->
-                <div class="page active" id="dashboard">
-                    <div class="page-title">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <h3>系统监控仪表盘</h3>
+                
+                <div class="cards">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">CPU 使用率</div>
+                            <div class="card-icon">
+                                <i class="fas fa-microchip"></i>
+                            </div>
+                        </div>
+                        <div class="card-value" id="cpu-usage">0%</div>
+                        <div class="card-info">系统整体CPU使用率</div>
                     </div>
                     
-                    <div class="cards">
-                        <div class="card">
-                            <div class="card-header">
-                                <div class="card-title">CPU 使用率</div>
-                                <div class="card-icon">
-                                    <i class="fas fa-microchip"></i>
-                                </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">内存使用</div>
+                            <div class="card-icon">
+                                <i class="fas fa-memory"></i>
                             </div>
-                            <div class="card-value" id="cpu-usage">0%</div>
-                            <div class="card-info">系统整体CPU使用率</div>
                         </div>
-                        
-                        <div class="card">
-                            <div class="card-header">
-                                <div class="card-title">内存使用</div>
-                                <div class="card-icon">
-                                    <i class="fas fa-memory"></i>
-                                </div>
-                            </div>
-                            <div class="card-value" id="memory-usage">0%</div>
-                            <div class="card-info">系统整体内存使用率</div>
-                        </div>
-                        
-                        <div class="card">
-                            <div class="card-header">
-                                <div class="card-title">在线假人</div>
-                                <div class="card-icon">
-                                    <i class="fas fa-robot"></i>
-                                </div>
-                            </div>
-                            <div class="card-value" id="online-bots">0</div>
-                            <div class="card-info">当前活动假人数量</div>
-                        </div>
+                        <div class="card-value" id="memory-usage">0%</div>
+                        <div class="card-info">系统整体内存使用率</div>
                     </div>
                     
-                    <div class="chart-container">
-                        <div class="chart-header">
-                            <div class="chart-title">资源使用历史 (过去24小时)</div>
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">在线假人</div>
+                            <div class="card-icon">
+                                <i class="fas fa-robot"></i>
+                            </div>
                         </div>
-                        <div class="chart" id="resource-chart">
-                            <!-- 图表柱状图通过JS生成 -->
-                        </div>
+                        <div class="card-value" id="online-bots">0</div>
+                        <div class="card-info">当前活动假人数量</div>
                     </div>
                 </div>
                 
-                <!-- 控制面板页面 -->
-                <div class="page" id="control">
-                    <div class="page-title">
-                        <i class="fas fa-sliders-h"></i>
-                        <h3>假人控制面板</h3>
-                        <!-- 添加刷新按钮 -->
-                        <button class="action-btn btn-refresh" id="refreshBotList" style="margin-left: auto;">
-                            <i class="fas fa-sync-alt"></i>刷新列表
-                        </button>
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">资源使用历史 (过去24小时)</div>
                     </div>
-                    
-                    <div class="bot-list" id="bot-list">
-                        <!-- 假人列表通过JS动态生成 -->
+                    <div class="chart" id="resource-chart">
+                        <!-- 图表柱状图通过JS生成 -->
                     </div>
+                </div>
+            </div>
+            
+            <!-- 控制面板页面 -->
+            <div class="page" id="control">
+                <div class="page-title">
+                    <i class="fas fa-sliders-h"></i>
+                    <h3>假人控制面板</h3>
+                    <!-- 添加刷新按钮 -->
+                    <button class="action-btn btn-refresh" id="refreshBotList" style="margin-left: auto;">
+                        <i class="fas fa-sync-alt"></i>刷新列表
+                    </button>
+                </div>
+                
+                <div class="bot-list" id="bot-list">
+                    <!-- 假人列表通过JS动态生成 -->
                 </div>
             </div>
         </div>
@@ -1011,34 +1024,17 @@
                     const config = botConfigs[botName] || {};
                     const resource = resources[botName] || {};
                     
+                    // 假人状态（模拟在线/离线）
+                    const status = Math.random() > 0.3 ? 'online' : 'offline';
+                    
                     const botCard = document.createElement('div');
                     botCard.className = 'bot-card';
                     botCard.dataset.name = botName;
                     
-                    botCard.innerHTML = `
-                        <div class="bot-header">
-                            <div class="bot-name">${botName}</div>
-                            <div class="bot-status status-online">在线</div>
-                        </div>
-                        <div class="bot-details">
-                            <div class="detail-item">
-                                <span class="detail-label">服务器</span>
-                                <span class="detail-value">${config.server || '未知'}:${config.port || '25565'}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">状态</span>
-                                <span class="detail-value">已连接</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">CPU 使用</span>
-                                <span class="detail-value">${resource.cpu ? resource.cpu.toFixed(1) + '%' : 'N/A'}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">内存使用</span>
-                                <span class="detail-value">${resource.memory ? resource.memory.toFixed(1) + ' MB' : 'N/A'}</span>
-                            </div>
-                        </div>
-                        <div class="bot-actions">
+                    // 根据状态显示不同的按钮
+                    let actionButtons = '';
+                    if (status === 'online') {
+                        actionButtons = `
                             <button class="action-btn btn-close">
                                 <i class="fas fa-power-off"></i>关闭
                             </button>
@@ -1051,6 +1047,42 @@
                             <button class="action-btn btn-log">
                                 <i class="fas fa-file-alt"></i>查看日志
                             </button>
+                        `;
+                    } else {
+                        actionButtons = `
+                            <button class="action-btn btn-restart">
+                                <i class="fas fa-redo"></i>重启
+                            </button>
+                        `;
+                    }
+                    
+                    botCard.innerHTML = `
+                        <div class="bot-header">
+                            <div class="bot-name">${botName}</div>
+                            <div class="bot-status ${status === 'online' ? 'status-online' : 'status-offline'}">
+                                ${status === 'online' ? '在线' : '离线'}
+                            </div>
+                        </div>
+                        <div class="bot-details">
+                            <div class="detail-item">
+                                <span class="detail-label">服务器</span>
+                                <span class="detail-value">${config.server || '未知'}:${config.port || '25565'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">状态</span>
+                                <span class="detail-value">${status === 'online' ? '已连接' : '已断开'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">CPU 使用</span>
+                                <span class="detail-value">${resource.cpu ? resource.cpu.toFixed(1) + '%' : 'N/A'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">内存使用</span>
+                                <span class="detail-value">${resource.memory ? resource.memory.toFixed(1) + ' MB' : 'N/A'}</span>
+                            </div>
+                        </div>
+                        <div class="bot-actions">
+                            ${actionButtons}
                         </div>
                     `;
                     
@@ -1076,6 +1108,13 @@
                 if (confirm(`确定要关闭假人 ${botName} 吗？`)) {
                     closeBot(botName, botCard);
                 }
+            }
+            
+            // 重启假人
+            if (e.target.closest('.btn-restart')) {
+                const botCard = e.target.closest('.bot-card');
+                const botName = botCard.dataset.name;
+                restartBot(botName, botCard);
             }
             
             // 执行命令
@@ -1113,18 +1152,71 @@
                 delete botConfigs[botName];
                 localStorage.setItem('botConfigs', JSON.stringify(botConfigs));
                 
-                // 从DOM中移除
-                botCard.remove();
+                // 更新UI为离线状态
+                const statusElement = botCard.querySelector('.bot-status');
+                statusElement.textContent = '离线';
+                statusElement.className = 'bot-status status-offline';
+                
+                const actionsElement = botCard.querySelector('.bot-actions');
+                actionsElement.innerHTML = `
+                    <button class="action-btn btn-restart">
+                        <i class="fas fa-redo"></i>重启
+                    </button>
+                `;
                 
                 // 更新在线假人计数
                 getOnlineBotsCount();
                 
-                showNotification(`假人 ${botName} 已成功关闭`);
-                
-                // 操作后刷新假人列表
-                loadBots();
+                showNotification(`假人 ${botName} 已关闭`);
             } catch (error) {
                 showNotification(`关闭假人失败: ${error.message}`, false);
+            }
+        }
+        
+        // 重启假人
+        async function restartBot(botName, botCard) {
+            const config = botConfigs[botName];
+            if (!config) {
+                showNotification(`找不到假人 ${botName} 的配置`, false);
+                return;
+            }
+            
+            try {
+                // 调用创建假人API
+                await apiRequest('/bot', 'POST', {
+                    name: botName,
+                    server: config.server,
+                    port: config.port,
+                    password: config.password || ''
+                });
+                
+                showNotification(`假人 ${botName} 正在重启...`);
+                
+                // 更新UI
+                const statusElement = botCard.querySelector('.bot-status');
+                statusElement.textContent = '在线';
+                statusElement.className = 'bot-status status-online';
+                
+                const actionsElement = botCard.querySelector('.bot-actions');
+                actionsElement.innerHTML = `
+                    <button class="action-btn btn-close">
+                        <i class="fas fa-power-off"></i>关闭
+                    </button>
+                    <button class="action-btn btn-command">
+                        <i class="fas fa-terminal"></i>执行命令
+                    </button>
+                    <button class="action-btn btn-chat">
+                        <i class="fas fa-comment-alt"></i>查看聊天
+                    </button>
+                    <button class="action-btn btn-log">
+                        <i class="fas fa-file-alt"></i>查看日志
+                    </button>
+                `;
+                
+                // 更新在线假人计数
+                getOnlineBotsCount();
+            } catch (error) {
+                showNotification(`重启假人失败: ${error.message}`, false);
             }
         }
         
@@ -1143,9 +1235,6 @@
                 showNotification(`已向 ${botName} 发送命令: ${command}`);
                 document.getElementById('commandInput').value = '';
                 commandModal.style.display = 'none';
-                
-                // 操作后刷新假人列表
-                loadBots();
             } catch (error) {
                 showNotification(`发送命令失败: ${error.message}`, false);
             }
