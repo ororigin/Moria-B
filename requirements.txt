@@ -1,3 +1,5 @@
 flask
 pyjavascript
 psutil
+datetime
+flask_cors

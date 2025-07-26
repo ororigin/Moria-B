@@ -88,7 +88,19 @@ class BotManager:
         return False
 
     def get_bot_list(self):
+        """返回所有在线假人名称"""
         return list(self.bots.keys())
+    
+    def get_all_bot_names(self):
+        """获取所有配置的假人名称（包括离线的）"""
+        # 获取在线假人
+        online_bots = list(self.bots.keys())
+        
+        # 获取配置中所有假人（包括离线的）
+        all_bots = [bot['name'] for bot in self.config.get('bots', [])]
+        
+        # 返回唯一列表
+        return list(set(online_bots + all_bots))
 
     def send_command(self, name, command):
         if name in self.bots:

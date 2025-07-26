@@ -57,7 +57,16 @@ def create_bot():
 
 @app.route('/bot', methods=['GET'])
 def list_bots():
-    return jsonify({'bots': manager.get_bot_list()})
+    # 获取在线假人
+    online_bots = manager.get_bot_list()
+    
+    # 获取配置中所有假人（包括离线的）
+    all_bots = [bot['name'] for bot in manager.config.get('bots', [])]
+    
+    # 确保所有假人都在列表中
+    bots = list(set(online_bots + all_bots))
+    
+    return jsonify({'bots': bots})
 
 @app.route('/bot/<name>', methods=['DELETE'])
 def delete_bot(name):
@@ -100,6 +109,25 @@ def get_bot_resources(name):
 @app.route('/bot/resources', methods=['GET'])
 def get_all_resources():
     return jsonify(manager.get_all_resources())
+
+@app.route('/bot/status', methods=['GET'])
+def get_all_bots_status():
+    bots = manager.get_bot_list()
+    statuses = []
+    
+    for bot_name in bots:
+        if bot_name in manager.bots:
+            process = manager.bots[bot_name]['process']
+            status = 'online' if process.is_alive() else 'offline'
+        else:
+            status = 'offline'
+        
+        statuses.append({
+            'name': bot_name,
+            'status': status
+        })
+    
+    return jsonify({'bots': statuses})
 
 def run_manager():
     manager.start()

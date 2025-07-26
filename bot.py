@@ -1,12 +1,13 @@
 # bot.py
 import time
 import threading
-from javascript import require, On
+import javascript
+
 
 class Bot:
     def __init__(self, bot_name: str, server_address: str, port: int, password="ufdbfcir", 
                  command_queue=None, output_queue=None):
-        self.mineflayer = require("mineflayer")
+        self.mineflayer = javascript.require("mineflayer")
         self.is_running = True
         self.bot = None
         self.bot_name = bot_name
@@ -18,6 +19,7 @@ class Bot:
         self.command_thread = threading.Thread(target=self._handle_commands)
         if password=="":
             self.password="ufdbfcir"
+        
         
     def create_bot(self):
         try:
@@ -38,7 +40,7 @@ class Bot:
         bot = self.bot
         ingame_help_content = ['#tpme:传送到你身边 #say [内容]:在聊天栏输出内容 #usecommand [指令(不包含/)]:执行指令 #help [页数]：获得帮助','#minecart:乘坐最近的矿车 #dismount:离开乘骑的实体']
 
-        @On(bot, "messagestr")
+        @javascript.On(bot, "messagestr")
         def message_get_handle(this, message, *args):
             self.print_chat(f"[{time.strftime('%m-%d %H:%M:%S', time.localtime())}] {message}")
             if "/reg" in message:
@@ -48,7 +50,7 @@ class Bot:
                 bot.chat(f"/l {self.password}")
                 self.print_log(f"假人 {self.bot_name} 已登录")
 
-        @On(bot, "whisper")
+        @javascript.On(bot, "whisper")
         def ingame_command_handle(this, username, message, *args):
             if message[0] == "#":
                 command = message[1:].split(' ', 1)
@@ -74,25 +76,29 @@ class Bot:
                         except:
                             bot.chat(f"/w {username} 格式错误")
                 elif keyword=="minecart":
-                    minecart=bot.nearest_entity(lambda entity: entity.name.lower() == 'minecart')
+                    
+                    
+                    minecart = bot.nearestEntity(
+                        lambda entity: entity.name == 'minecart'
+                    )
                     bot.mount(minecart)
                 elif keyword=="dismount":
                     bot.dismount()
                 else:
                     bot.chat(f"/w {username} 未知指令，输入#help获得指令列表")
 
-        @On(bot, "end")
+        @javascript.On(bot, "end")
         def end_bot_handle(this, reason):
             self.print_log(f"假人 {self.bot_name} 关闭: {reason}")
             self.is_running = False
 
-        @On(bot, "death")
+        @javascript.On(bot, "death")
         def death_handle(this):
             self.print_log(f"假人 {self.bot_name} 死亡")
             bot.respawn()
             bot.chat("/dback")
 
-        @On(bot, "kicked")
+        @javascript.On(bot, "kicked")
         def kick_handle(this, reason, *args):
             self.print_log(f"假人 {self.bot_name} 被踢出: {reason}")
             self.is_running = False
